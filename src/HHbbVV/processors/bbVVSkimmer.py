@@ -56,7 +56,7 @@ gen_selection_dict = {
     "GluGluHToWWTo4q_M-125": gen_selection_HH4V,
 }
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 # logger = logging.getLogger("bbVVSkimmer")
 # logger.setLevel(logging.INFO)
 
@@ -339,7 +339,10 @@ class bbVVSkimmer(SkimmerABC):
 
         jets, _ = get_jec_jets(events, year, isData, self.jecs, fatjets=False)
 
+        logging.debug("Making AK4 selections...")
         vbf_jets = self.get_vbf_jet(jets, fatjets=fatjets, bb_mask=bb_mask, num_jets=num_jets)
+
+        logging.debug("Making AK8+AK4 selections...")
         vbf_jets_ak8 = self.get_vbf_jet_with_ak8(
             jets=jets,
             fatjets=fatjets,
@@ -347,6 +350,8 @@ class bbVVSkimmer(SkimmerABC):
             muons=events.Muon,
             num_jets=num_jets,
         )
+
+        logging.debug("Making AK8+AK4+eta_jj_min selections...")
         vbf_jets_ak8_etaminjj = self.get_vbt_jet_with_ak8_etaminjjcut(
             jets=jets,
             fatjets=fatjets,
@@ -370,6 +375,7 @@ class bbVVSkimmer(SkimmerABC):
             for (var, key) in self.skim_vars["Jet"].items()
         }
         VBFJetVars = {**VBFJetVars, **VBFJetOptVars, **VBFJetEtaSelVars}
+        logging.debug(f"{VBFJetVars.keys()=}")
 
         # JEC vars
         if not isData:
@@ -397,6 +403,7 @@ class bbVVSkimmer(SkimmerABC):
         }
 
         skimmed_events = {**skimmed_events, **ak8FatJetVars, **VBFJetVars, **dijetVars, **otherVars}
+        logging.debug(f"{skimmed_events.keys()=}")
 
         ######################
         # Selection
@@ -438,6 +445,7 @@ class bbVVSkimmer(SkimmerABC):
             )
             cuts.append(cut)
 
+        logging.debug("Adding ak8_pt_eta selection...")
         add_selection("ak8_pt_eta", np.any(cuts, axis=0), *selection_args)
 
         # mass cuts: check if jet passes mass cut in any of the JMS/R variations
@@ -465,6 +473,7 @@ class bbVVSkimmer(SkimmerABC):
 
             cuts.append(cut)
 
+        logging.debug("Adding ak8_mass selection...")
         add_selection("ak8_mass", np.any(cuts, axis=0), *selection_args)
 
         # TODO: dijet mass: check if dijet mass cut passes in any of the JEC or JMC variations
@@ -475,6 +484,8 @@ class bbVVSkimmer(SkimmerABC):
             ak8FatJetVars["ak8FatJetParticleNetMD_Txbb"][bb_mask]
             >= self.preselection["bbFatJetParticleNetMD_Txbb"]
         )
+
+        logging.debug("Adding ak8bb_txbb selection...")
         add_selection("ak8bb_txbb", txbb_cut, *selection_args)
 
         # 2018 HEM cleaning
@@ -514,6 +525,7 @@ class bbVVSkimmer(SkimmerABC):
                 | ((events.MET.phi > -1.62) & (events.MET.pt < 470.0) & (events.MET.phi < -0.62))
             )
 
+            logging.debug("Adding hem_cleaning selection...")
             add_selection("hem_cleaning", ~np.array(hem_cleaning).astype(bool), *selection_args)
 
         # MET filters
@@ -524,6 +536,7 @@ class bbVVSkimmer(SkimmerABC):
             if mf in events.Flag.fields:
                 metfilters = metfilters & events.Flag[mf]
 
+        logging.debug("Adding met_filters selection...")
         add_selection("met_filters", metfilters, *selection_args)
 
         # remove weird jets which have <4 particles (due to photon scattering?)
@@ -535,12 +548,13 @@ class bbVVSkimmer(SkimmerABC):
             pfcands = events.PFCands[ak8_pfcands.pFCandsIdx]
             pfcands_sel.append(ak.count(pfcands.pdgId, axis=1) < 4)
 
+        logging.debug("Adding photon_jets selection...")
         add_selection("photon_jets", ~np.sum(pfcands_sel, axis=0).astype(bool), *selection_args)
 
         #########################
         # Veto variables
         #########################
-
+        logging.debug("Processing veto variables...")
         electrons, muons = events.Electron, events.Muon
 
         # VBF Hbb selection from https://github.com/jennetd/hbb-coffea/blob/85bc3692be9e0e0a0c82ae3c78e22cdf5b3e4d68/boostedhiggs/vhbbprocessor.py#L283-L307
@@ -617,6 +631,7 @@ class bbVVSkimmer(SkimmerABC):
         ######################
         # Remove branches
         ######################
+        logging.debug("Removing branches...")
 
         # if not saving all, save only necessary branches
         if not self._save_all:
