@@ -780,7 +780,7 @@ class bbVVSkimmer(SkimmerABC):
                     **{key: val for (key, val) in pnet_vars.items() if key in self.min_branches},
                 }
 
-        logging.info(f"{skimmed_events.keys()=}")  # TODO: delete
+        logging.debug(f"{skimmed_events.keys()=}")
         pddf = self.to_pandas(skimmed_events)
         fname = events.behavior["__events_factory__"]._partition_key.replace("/", "_") + ".parquet"
         self.dump_table(pddf, fname)
@@ -952,10 +952,22 @@ class bbVVSkimmer(SkimmerABC):
         i1 = inds[:, 0].astype(int)
         i2 = inds[:, 1].astype(int)
 
-        j1 = jets[np.arange(len(jets)), i1]
-        j2 = jets[np.arange(len(jets)), i2]
+        # ak.concatenate is slow, so we will use masking
+        # pad to a regular size so that we can use a numpy mask
+        max_num_jets = min(ak.max(ak.count(jets.pt, axis=1)), 2)
+        jets_padded = ak.pad_none(jets, max_num_jets)
 
-        selected_jets = ak.concatenate([ak.unflatten(j1, 1), ak.unflatten(j2, 1)], axis=1)
+        # create a numpy mask and set corresponding element to True
+        mask = np.zeros((len(jets_padded), max_num_jets), dtype=bool)
+        mask[np.arange(len(mask)), i1] = True
+        mask[np.arange(len(mask)), i2] = True
+
+        # select the jets
+        selected_jets = ak.unflatten(jets_padded[mask], 2)
+
+        # remove None
+        is_none_mask = ak.is_none(jets)
+        selected_jets = ak.mask(selected_jets, ~is_none_mask)
 
         return selected_jets
 
@@ -995,7 +1007,7 @@ class bbVVSkimmer(SkimmerABC):
                 events.L1PreFiringWeight.Dn,
             )
 
-        logging.debug("weights ", weights._weights.keys())
+        logging.debug(f"weights: {weights._weights.keys()}")
 
         ###################### Save all the weights and variations ######################
 
