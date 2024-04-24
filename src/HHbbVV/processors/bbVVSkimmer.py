@@ -954,7 +954,11 @@ class bbVVSkimmer(SkimmerABC):
 
         # ak.concatenate is slow, so we will use masking
         # pad to a regular size so that we can use a numpy mask
-        max_num_jets = min(ak.max(ak.count(jets.pt, axis=1)), 2)
+        max_num_jets = ak.max(ak.count(jets.pt, axis=1))
+        max_num_jets = max(max_num_jets, np.max(i1) + 1)
+        max_num_jets = max(max_num_jets, np.max(i2) + 1)
+        max_num_jets = max(max_num_jets, 2)
+        max_num_jets = int(max_num_jets)
         jets_padded = ak.pad_none(jets, max_num_jets)
 
         # create a numpy mask and set corresponding element to True
