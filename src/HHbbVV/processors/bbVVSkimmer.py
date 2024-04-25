@@ -114,14 +114,14 @@ class bbVVSkimmer(SkimmerABC):
         "VBFJetPt",
         "VBFJetPhi",
         "VBFJetMass",
-        "VBFJetOptEta",
-        "VBFJetOptPt",
-        "VBFJetOptPhi",
-        "VBFJetOptMass",
-        "VBFJetEtaSelEta",
-        "VBFJetEtaSelPt",
-        "VBFJetEtaSelPhi",
-        "VBFJetEtaSelMass",
+        "VBFJetMatchingEfficiencyEta",
+        "VBFJetMatchingEfficiencyPt",
+        "VBFJetMatchingEfficiencyPhi",
+        "VBFJetMatchingEfficiencyMass",
+        "VBFJetSignificanceEta",
+        "VBFJetSignificancePt",
+        "VBFJetSignificancePhi",
+        "VBFJetSignificanceMass",
         "DijetMass",
         "nGoodVBFJets",
         "nGoodVBFJetsOpt",
@@ -152,8 +152,8 @@ class bbVVSkimmer(SkimmerABC):
         min_branches.append(f"ak8FatJetPt_{shift}")
         min_branches.append(f"DijetMass_{shift}")
         min_branches.append(f"VBFJetPt_{shift}")
-        min_branches.append(f"VBFJetOptPt_{shift}")
-        min_branches.append(f"VBFJetEtaSelPt_{shift}")
+        min_branches.append(f"VBFJetMatchingEfficiencyPt_{shift}")
+        min_branches.append(f"VBFJetSignificancePt_{shift}")
 
     for shift in jmsr_shifts:
         min_branches.append(f"ak8FatJetParticleNetMass_{shift}")
@@ -336,40 +336,39 @@ class bbVVSkimmer(SkimmerABC):
                 }
 
         # VBF ak4 jet vars
-
         jets, _ = get_jec_jets(events, year, isData, self.jecs, fatjets=False)
 
         vbf_jets = self.get_vbf_jet(jets, fatjets=fatjets, bb_mask=bb_mask, num_jets=num_jets)
-        vbf_jets_ak8 = self.get_vbf_jet_with_ak8(
+        vbf_jets_matching_eff = self.get_vbf_jet_matching_efficiency_opt(
             jets=jets,
             fatjets=fatjets,
             electrons=events.Electron,
             muons=events.Muon,
             num_jets=num_jets,
         )
-        vbf_jets_ak8_etaminjj = self.get_vbt_jet_with_ak8_etaminjjcut(
+        vbf_jets_significance = self.get_vbt_jet_significance_opt(
             jets=jets,
             fatjets=fatjets,
             electrons=events.Electron,
             muons=events.Muon,
             num_jets=num_jets,
-            eta_jj_min=3,
-            eta_jj_min_num_jets=3,
         )
 
         VBFJetVars = {
             f"VBFJet{key}": pad_val(vbf_jets[var], num_ak4_jets, axis=1)
             for (var, key) in self.skim_vars["Jet"].items()
         }
-        VBFJetOptVars = {
-            f"VBFJetOpt{key}": pad_val(vbf_jets_ak8[var], num_ak4_jets, axis=1)
+        VBFJetMatchingEfficiencyVars = {
+            f"VBFJetMatchingEfficiency{key}": pad_val(
+                vbf_jets_matching_eff[var], num_ak4_jets, axis=1
+            )
             for (var, key) in self.skim_vars["Jet"].items()
         }
-        VBFJetEtaSelVars = {
-            f"VBFJetEtaSel{key}": pad_val(vbf_jets_ak8_etaminjj[var], num_ak4_jets, axis=1)
+        VBFJetSignificanceVars = {
+            f"VBFJetSignificance{key}": pad_val(vbf_jets_significance[var], num_ak4_jets, axis=1)
             for (var, key) in self.skim_vars["Jet"].items()
         }
-        VBFJetVars = {**VBFJetVars, **VBFJetOptVars, **VBFJetEtaSelVars}
+        VBFJetVars = {**VBFJetVars, **VBFJetMatchingEfficiencyVars, **VBFJetSignificanceVars}
 
         # JEC vars
         if not isData:
@@ -380,16 +379,16 @@ class bbVVSkimmer(SkimmerABC):
                         VBFJetVars[f"VBFJet{key}_{label}_{vari}"] = pad_val(
                             vbf_jets[shift][vari][var], num_ak4_jets, axis=1
                         )
-                        VBFJetVars[f"VBFJetOpt{key}_{label}_{vari}"] = pad_val(
-                            vbf_jets_ak8[shift][vari][var], num_ak4_jets, axis=1
+                        VBFJetVars[f"VBFJetMatchingEfficiency{key}_{label}_{vari}"] = pad_val(
+                            vbf_jets_matching_eff[shift][vari][var], num_ak4_jets, axis=1
                         )
-                        VBFJetVars[f"VBFJetEtaSel{key}_{label}_{vari}"] = pad_val(
-                            vbf_jets_ak8_etaminjj[shift][vari][var], num_ak4_jets, axis=1
+                        VBFJetVars[f"VBFJetSignificance{key}_{label}_{vari}"] = pad_val(
+                            vbf_jets_significance[shift][vari][var], num_ak4_jets, axis=1
                         )
         # skimmed_events["nGoodVBFJets"] = np.array(ak.sum(vbf_jet_mask, axis=1))
         skimmed_events["nGoodVBFJets"] = np.array(ak.count(vbf_jets.pt, axis=1))
-        skimmed_events["nGoodVBFJetsOpt"] = np.array(ak.count(vbf_jets_ak8.pt, axis=1))
-        skimmed_events["nGoodVBFJetsEtaSel"] = np.array(ak.count(vbf_jets_ak8_etaminjj.pt, axis=1))
+        skimmed_events["nGoodVBFJetsOpt"] = np.array(ak.count(vbf_jets_matching_eff.pt, axis=1))
+        skimmed_events["nGoodVBFJetsEtaSel"] = np.array(ak.count(vbf_jets_significance.pt, axis=1))
 
         otherVars = {
             key: events[var.split("_")[0]]["_".join(var.split("_")[1:])].to_numpy()
@@ -837,7 +836,7 @@ class bbVVSkimmer(SkimmerABC):
         electrons: ak.Array,
         muons: ak.Array,
         num_jets: int,
-        ak4_jet_selection: dict[str, float] = None,
+        ak4_jet_selection: dict[str, float],
     ) -> ak.Array:
         # AK8 selections
         fatjets = ak.pad_none(
@@ -869,15 +868,6 @@ class bbVVSkimmer(SkimmerABC):
         # AK4 selections
         bbjet = fatjets[bb_mask]
         vvjet = fatjets[~bb_mask]
-        if ak4_jet_selection is None:
-            # use the optimized one
-            ak4_jet_selection = {
-                "pt": 30,
-                "eta_min": 1.8,
-                "eta_max": 5.0,
-                "dR_fatjetbb": 1.8,
-                "dR_fatjetVV": 1.8,
-            }
         ak4_sel = (
             jets.isTight
             & (jets.pt >= ak4_jet_selection["pt"])
@@ -901,25 +891,52 @@ class bbVVSkimmer(SkimmerABC):
 
         return vbf_jets
 
-    def get_vbt_jet_with_ak8_etaminjjcut(
+    def get_vbf_jet_matching_efficiency_opt(
         self,
         jets: ak.Array,
         fatjets: ak.Array,
         electrons: ak.Array,
         muons: ak.Array,
         num_jets: int,
-        ak4_jet_selection: dict[str, float] = None,
-        eta_jj_min: float = 1.2,
-        eta_jj_min_num_jets: int = 3,
     ) -> ak.Array:
-        if ak4_jet_selection is None:
-            ak4_jet_selection = {
-                "pt": 30,
-                "eta_min": 1.8,
-                "eta_max": 5.0,
-                "dR_fatjetbb": 1.8,
-                "dR_fatjetVV": 1.8,
-            }
+        ak4_jet_selection = {
+            "pt": 15,
+            "eta_min": 0.2,
+            "eta_max": 5.1,
+            "dR_fatjetbb": 1.0,
+            "dR_fatjetVV": 0.8,
+        }
+        return self.get_vbf_jet_with_ak8(
+            jets=jets,
+            fatjets=fatjets,
+            electrons=electrons,
+            muons=muons,
+            num_jets=num_jets,
+            ak4_jet_selection=ak4_jet_selection,
+        )
+
+    def get_vbt_jet_significance_opt(
+        self,
+        jets: ak.Array,
+        fatjets: ak.Array,
+        electrons: ak.Array,
+        muons: ak.Array,
+        num_jets: int,
+    ) -> ak.Array:
+
+        # optimized cuts
+        ak4_jet_selection = {
+            "pt": 30,
+            "eta_min": 1.8,
+            "eta_max": 5.0,
+            "dR_fatjetbb": 1.8,
+            "dR_fatjetVV": 1.8,
+        }
+
+        eta_jj_min = 1.2
+        eta_jj_min_num_jets = 3
+
+        # AK8 + AK4
         jets = self.get_vbf_jet_with_ak8(
             jets=jets,
             fatjets=fatjets,
@@ -929,6 +946,8 @@ class bbVVSkimmer(SkimmerABC):
             ak4_jet_selection=ak4_jet_selection,
         )
 
+        # Apply a min cut on eta_jj
+        # If none left, choose the highest pT pair
         jets = ak.pad_none(jets, eta_jj_min_num_jets, clip=True)
         eta = jets.eta
 
