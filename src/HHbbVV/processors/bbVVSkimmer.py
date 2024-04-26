@@ -339,14 +339,14 @@ class bbVVSkimmer(SkimmerABC):
         jets, _ = get_jec_jets(events, year, isData, self.jecs, fatjets=False)
 
         vbf_jets = self.get_vbf_jet(jets, fatjets=fatjets, bb_mask=bb_mask, num_jets=num_jets)
-        vbf_jets_matching_eff = self.get_vbf_jet_matching_efficiency_opt(
+        vbf_jets_matching_eff = self.get_vbt_jet_matching_efficiency_opt(
             jets=jets,
             fatjets=fatjets,
             electrons=events.Electron,
             muons=events.Muon,
             num_jets=num_jets,
         )
-        vbf_jets_significance = self.get_vbt_jet_significance_opt(
+        vbf_jets_significance = self.get_vbf_jet_significance_opt(
             jets=jets,
             fatjets=fatjets,
             electrons=events.Electron,
@@ -891,7 +891,7 @@ class bbVVSkimmer(SkimmerABC):
 
         return vbf_jets
 
-    def get_vbf_jet_matching_efficiency_opt(
+    def get_vbf_jet_significance_opt(
         self,
         jets: ak.Array,
         fatjets: ak.Array,
@@ -901,10 +901,10 @@ class bbVVSkimmer(SkimmerABC):
     ) -> ak.Array:
         ak4_jet_selection = {
             "pt": 15,
-            "eta_min": 0.2,
-            "eta_max": 5.1,
-            "dR_fatjetbb": 1.0,
-            "dR_fatjetVV": 0.8,
+            "eta_min": 1.8,
+            "eta_max": 5.0,
+            "dR_fatjetbb": 1.8,
+            "dR_fatjetVV": 1.8,
         }
         return self.get_vbf_jet_with_ak8(
             jets=jets,
@@ -915,7 +915,7 @@ class bbVVSkimmer(SkimmerABC):
             ak4_jet_selection=ak4_jet_selection,
         )
 
-    def get_vbt_jet_significance_opt(
+    def get_vbt_jet_matching_efficiency_opt(
         self,
         jets: ak.Array,
         fatjets: ak.Array,
@@ -926,15 +926,15 @@ class bbVVSkimmer(SkimmerABC):
 
         # optimized cuts
         ak4_jet_selection = {
-            "pt": 30,
-            "eta_min": 1.8,
-            "eta_max": 5.0,
-            "dR_fatjetbb": 1.8,
-            "dR_fatjetVV": 1.8,
+            "pt": 15,
+            "eta_min": 0.2,
+            "eta_max": 5.1,
+            "dR_fatjetbb": 1.0,
+            "dR_fatjetVV": 0.8,
         }
 
-        eta_jj_min = 1.2
-        eta_jj_min_num_jets = 3
+        eta_jj_min = 3.5
+        eta_jj_min_num_jets = 4
 
         # AK8 + AK4
         jets = self.get_vbf_jet_with_ak8(
